@@ -1,0 +1,18 @@
+[package]
+name = "bigbang-simulator"
+version = "0.1.0"
+edition = "2024"
+authors = ["Your Name <itstaheri1@gmail.com>"]
+description = "An interactive cosmic simulation of celestial objects and gravitational physics"
+repository = "https://github.com/itstaheri/bigbang-simulator"
+readme = "README.md"
+keywords = ["simulation", "physics", "astronomy", "gravity", "universe"]
+categories = ["simulation", "game", "science"]
+
+[dependencies]
+macroquad = "0.4"
+rand = "0.8"
+
+[profile.release]
+lto = true
+codegen-units = 1
