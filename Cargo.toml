@@ -2,7 +2,7 @@
 name = "bigbang-simulator"
 version = "0.1.0"
 edition = "2024"
-authors = ["Your Name <itstaheri1@gmail.com>"]
+authors = ["<itstaheri1@gmail.com>"]
 description = "An interactive cosmic simulation of celestial objects and gravitational physics"
 repository = "https://github.com/itstaheri/bigbang-simulator"
 readme = "README.md"
