@@ -1,62 +1,83 @@
-use crate::objects::{CelestialObject, ObjectType};
+use crate::objects::CelestialObject;
 
-// gravitational constant
 pub const G: f32 = 6.67430e-5_f32;
 
 pub struct GravityEngine {
-    pub softening_length: f32,  
-    pub time_step_factor: f32,  
+    pub softening_length: f32,
+
+    pub time_step_factor: f32,
+
+    pub enabled: bool,
 }
-//hint :
- // Safety cushion for gravity - stops objects from 
-                                 // getting infinite attraction when they get too close
-                                 // (Without this, two close stars would pull each other
-                                 // with INFINITE force and break the simulation!)
-                                 // so we Simulation speed controller - smaller steps = more stable,
-                                 // bigger steps = faster but can get wobbly
-                                 // (Think of it like "slow motion" for accurate physics)
 
 impl GravityEngine {
     pub fn new() -> Self {
         GravityEngine {
-            softening_length: 15.0,  // "Fudge factor" for numerical stability
-            time_step_factor: 0.02,   // Smaller steps = more stability
+            softening_length: 15.0,
+            time_step_factor: 0.02,
+            enabled: true,
         }
     }
-    
+
     pub fn calculate_gravitational_forces(&self, objects: &mut [CelestialObject]) {
-        let n = objects.len();
-        
-        // Zero out accelerations first
+        if !self.enabled {
+            return;
+        }
+
         for obj in objects.iter_mut() {
             obj.ax = 0.0;
             obj.ay = 0.0;
+            obj.az = 0.0;
         }
-        
-        // Calculate forces between every pair of objects
+
+        let soft_sq = self.softening_length * self.softening_length;
+        let n = objects.len();
+
         for i in 0..n {
-            for j in (i + 1)..n {
-                let dx = objects[j].x - objects[i].x;
-                let dy = objects[j].y - objects[i].y;
-                
-                // Distance with softening to avoid division by zero
-                let distance_sq = dx * dx + dy * dy + self.softening_length.powi(2);
+            let (head, tail) = objects.split_at_mut(i + 1);
+            let a = &mut head[i];
+            let (ax0, ay0, az0) = (a.x, a.y, a.z);
+            let (mass_a, radius_a) = (a.mass, a.radius);
+            let (mut acc_x, mut acc_y, mut acc_z) = (0.0f32, 0.0f32, 0.0f32);
+
+            for b in tail.iter_mut() {
+                let dx = b.x - ax0;
+                let dy = b.y - ay0;
+                let dz = b.z - az0;
+
+                let distance_sq = dx * dx + dy * dy + dz * dz + soft_sq;
                 let distance = distance_sq.sqrt();
-                
-                // Skip if objects are about to collide
-                if distance < (objects[i].radius + objects[j].radius) * 2.0 {
+
+                if distance < (radius_a + b.radius) * 2.0 {
                     continue;
                 }
-                
-                // Newtons law of gravitation
-                let force_magnitude = G / distance_sq;
-                
-                objects[i].ax += force_magnitude * objects[j].mass * dx / distance;
-                objects[i].ay += force_magnitude * objects[j].mass * dy / distance;
-                
-                objects[j].ax -= force_magnitude * objects[i].mass * dx / distance;
-                objects[j].ay -= force_magnitude * objects[i].mass * dy / distance;
+
+                let inv_r3 = G / (distance_sq * distance);
+                let k_a = inv_r3 * b.mass;
+                let k_b = inv_r3 * mass_a;
+
+                acc_x += k_a * dx;
+                acc_y += k_a * dy;
+                acc_z += k_a * dz;
+
+                b.ax -= k_b * dx;
+                b.ay -= k_b * dy;
+                b.az -= k_b * dz;
             }
+
+            a.ax += acc_x;
+            a.ay += acc_y;
+            a.az += acc_z;
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    #[allow(dead_code)]
+    pub fn set_time_step_factor(&mut self, factor: f32) {
+        self.time_step_factor = factor.clamp(0.001, 0.1);
     }
 }
